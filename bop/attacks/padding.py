@@ -1,13 +1,25 @@
-from utils import chunks, xor
+from bop.utils import chunks, xor
 
 
 def cbc_decrypt(oracle, msg, iv=None, blocksize=16):
-    """Performs a CBC - blockcipher attack when given a padding oracle.
+    r"""Performs a CBC - blockcipher attack when given a padding oracle.
 
     A padding oracle reports whether a message given for decryption has valid
     padding after decrpyting it.
 
     This attack is able to decrypt the given message without knowing the secret key.
+
+    Example:
+    ```python
+    >>> import secrets
+    >>> from bop.oracles.padding import PaddingCBCOracle as Oracle
+    >>> iv = secrets.token_bytes(16)
+    >>> plain = b'Hello Bop.'
+    >>> o = Oracle(plaintext=plain, iv=iv)
+    >>> cbc_decrypt(o, o.msg, iv=iv)
+    b'Hello Bop.\x06\x06\x06\x06\x06\x06'
+
+    ```
 
     Arguments:
         oracle {oracles.PaddingOracle} -- The padding oracle

@@ -3,7 +3,7 @@ import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.backends import default_backend
 
-from utils import pad
+from bop.utils import pad
 
 
 class _Oracle(object):

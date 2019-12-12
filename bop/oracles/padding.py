@@ -2,8 +2,8 @@ import secrets
 
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
-from oracles._base import _Oracle
-from utils import is_padding_valid
+from bop.oracles._base import _Oracle
+from bop.utils import is_padding_valid
 
 
 __all__ = [ 'PaddingCBCOracle', 'PaddingECBOracle' ]

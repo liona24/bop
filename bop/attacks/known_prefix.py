@@ -1,4 +1,4 @@
-from utils import chunks, infix_block_diffs
+from bop.utils import chunks, infix_block_diffs
 
 
 def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksize=3*512):
@@ -6,15 +6,34 @@ def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksiz
 
     A blocklayout consists of 3 parameters:
     The blocksize of the ECB algorithm (in bytes)
-    The block offset, i.e. the index of the block in which attacker controlled data starts
-    The padding offset, i.e. the offset into the block at block offset at which attacker controlled data starts.
+    The block offset, i.e. the index of the first block which can be solely controlled by the attacker
+    The padding offset, i.e. the number of bytes which cannot be controlled before the attacker controlled bytes
 
+    ```
     <- blocksize ->
     X X X X X X X X | X X X X A A A A | A A A A A A A A | ...
     0                 1                 2
-        block offset -^
+        block offset -------------------^
                      <------>
                         padding offset
+    ```
+
+    Example:
+    ```python
+    >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
+    >>> o = Oracle(head=b'Some prefix, 26 bytes long', tail=b'Very secret, very transparent text.')
+    >>> ecb_guess_block_layout(o)
+    (16, 2, 10)
+
+    ```
+    Example:
+    ```python
+    >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
+    >>> o = Oracle(tail=b'Very secret, very transparent text.')
+    >>> ecb_guess_block_layout(o)
+    (16, 0, 0)
+
+    ```
 
     Arguments:
         oracle {callable} -- The oracle used.
@@ -100,18 +119,28 @@ def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksiz
     else:
         raise RuntimeError('Could not guess block size. Attack failed. Maybe try a different padding value!')
 
-    return blocksize, block_offset, padding_offset, base_cipher_len
+    return blocksize, block_offset, padding_offset
 
 
 def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
-    """Performs a ECB - Known - Prefix Attack using the given oracle.
+    r"""Performs a ECB - Known - Prefix Attack using the given oracle.
 
     The oracle is required to encrypt given input with the same secret key.
 
     This attack is able to decrypt the plaintext after the controlled prefix.
 
+    Example:
+    ```python
+    >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
+    >>> o = Oracle(head=b'Some prefix, 26 bytes long', tail=b'Very secret, very transparent text.')
+    >>> decrypted, blocklayout = ecb_decrypt_tail(o)
+    >>> decrypted
+    b'Very secret, very transparent text.\x01'
+
+    ```
+
     Arguments:
-        oracle {oracle} -- The oracle
+        oracle {oracle} -- The oracle, any callable which encrypts the given input with the same key.
 
     Keyword Arguments:
         default_prefix {bytes} -- A default prefix which will be prepended before any attack data (default: {None})
@@ -119,7 +148,7 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
         blocklayout {(int, int, int)} -- A tuple containing blocklayout information (blocksize, block_offset, padding_offset), the block size of the cipher in bytes, the index of the block where the attacker controlled data starts, the offset within this block where the attacker controlled data starts. If not given, the blocklayout will be guessed. (For more details see `ecb_guess_block_layout`) (default: {None})
 
     Returns:
-        (bytes, int, int, int) -- The decrypted message, the blocksize, the block offset, the padding offset respectively.
+        (bytes, (int, int, int)) -- The decrypted message and a tuple with the blocksize, the block offset, the padding offset respectively.
     """
 
     if default_prefix is None:
@@ -128,12 +157,13 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
     def ask_oracle(byteslike=b''):
         return oracle(default_prefix + byteslike)
 
+    cipher_len = len(ask_oracle())
+
     if blocklayout is not None:
         blocksize, block_offset, padding_offset = blocklayout
-        cipher_len = len(ask_oracle())
     else:
         # TODO: If we really want correct offset guessing we simply would have to do the guessing routine twice with different padding bytes
-        blocksize, block_offset, padding_offset, cipher_len = ecb_guess_block_layout(
+        blocksize, block_offset, padding_offset = ecb_guess_block_layout(
             oracle,
             default_prefix=default_prefix,
             pb=pb
@@ -149,7 +179,7 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
     base_offset = block_offset * blocksize
 
     # for each block
-    while base_offset + block_index * blocksize < cipher_len:
+    while base_offset + block_index * blocksize <= cipher_len:
 
         off = block_index * blocksize
 
@@ -183,4 +213,4 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
         block_index += 1
 
     # finally remove our initial dummy padding
-    return decrypted[blocksize:], blocksize, block_offset, padding_offset
+    return decrypted[blocksize:], (blocksize, block_offset, padding_offset)
