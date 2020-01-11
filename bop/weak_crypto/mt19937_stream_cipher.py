@@ -1,6 +1,6 @@
 import binascii
 
-from rng.mt19937 import seed
+from bop.rng.mt19937 import seed
 
 
 def _int_from_bytes(byteslike):

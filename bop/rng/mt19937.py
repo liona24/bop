@@ -159,11 +159,11 @@ def from_observed_sequence(sequence, params=P32):
 
     Example:
     ```python
-    >>> from rng.mt19937 import seed, from_observed_sequence
     >>> rng1 = seed(1010101)
     >>> sequence = [ next(rng1) for _ in range(1929) ]
     >>> rng2 = from_observed_sequence(sequence)
     >>> assert (next(rng1) == next(rng2))
+
     ```
 
     Arguments:

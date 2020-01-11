@@ -14,7 +14,7 @@ def ctr_fixed_nonce(iterable_of_ciphertexts, freq=Res.EN_freq_1):
     >>> from bop.data.importer import load, Res
     >>> plaintexts = [b'Hello friendly reader']
     >>> plaintexts.extend(map(lambda x: x.encode('utf-8'), load(Res.EN_example_1)))
-    >>> c = aes_ctr()
+    >>> c = aes_ctr(key=b'YELLOW SUBMARINE', nonce=b'NotSoOnce Nonce!')
     >>> ciphertexts = [ c.encrypt(p) for p in plaintexts ]
     >>> _score, guessed_key = ctr_fixed_nonce(ciphertexts)[0]
     >>> xor(ciphertexts[0], guessed_key)
