@@ -30,6 +30,30 @@ class _PaddingOracle(_Oracle):
 
 
 class PaddingCBCOracle(_PaddingOracle):
+    r"""An oracle which leaks information about whether a decrypted ciphertext has valid padding
+
+    Messages are encrypted using AES CBC.
+
+    Keyword Arguments:
+        plaintext {byteslike} -- The plaintext to generate the cipher from. Will be generated if None (default: {None})
+        key {byteslike} -- The key to use for encryption. Will be generated if None (default: {None})
+        keysize {int} -- The size of the key in bits (default: {128})
+        iv {byteslike} -- The IV to use for encryption. Will be generated if None (default: {None})
+
+    Usage:
+    ```python
+    >>> # Messages will be padded automatically
+    >>> oracle = PaddingCBCOracle(b'Hello World!')
+    >>> with_valid_padding = oracle.msg
+    >>> # Make some arbitrary changes to invalidate the message
+    >>> with_invalid_padding = oracle.msg[:-2] + b'Hi'
+    >>> oracle(with_valid_padding)
+    True
+    >>> oracle(with_invalid_padding)
+    False
+
+    ```
+    """
     def __init__(self, plaintext=None, key=None, keysize=128, iv=None):
         if iv is None:
             iv = secrets.token_bytes(16)
@@ -38,5 +62,28 @@ class PaddingCBCOracle(_PaddingOracle):
 
 
 class PaddingECBOracle(_PaddingOracle):
+    r"""An oracle which leaks information about whether a decrypted ciphertext has valid padding
+
+    Messages are encrypted using AES ECB.
+
+    Keyword Arguments:
+        plaintext {byteslike} -- Not used. (default: {None})
+        key {byteslike} -- The key to use for encryption. Will be generated if None (default: {None})
+        keysize {int} -- The size of the key in bits (default: {128})
+
+    Usage:
+    ```python
+    >>> # Messages will be padded automatically
+    >>> oracle = PaddingCBCOracle(b'Hello World!')
+    >>> with_valid_padding = oracle.msg
+    >>> # Make some arbitrary changes to invalidate the message
+    >>> with_invalid_padding = oracle.msg[:-2] + b'Hi'
+    >>> oracle(with_valid_padding)
+    True
+    >>> oracle(with_invalid_padding)
+    False
+
+    ```
+    """
     def __init__(self, plaintext=None, key=None, keysize=128):
         super().__init__(algorithms.AES, modes.ECB(), plaintext=plaintext, key=key, keysize=keysize)

@@ -1,5 +1,7 @@
 from bop.utils import xor
 
+__all__ = ['cbc_inject_malformed', 'ctr_inject_malformed']
+
 
 def cbc_inject_malformed(ciphertext, offset, is_, should, iv=None, blocksize=16):
     """Inject a custom payload after encrypting a known plaintext using AES CBC.
