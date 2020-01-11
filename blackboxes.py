@@ -1,5 +1,5 @@
 import secrets
-from aes import pad
+from bop.utils import pad
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
@@ -34,4 +34,3 @@ def encrypt_randomly_with_ecb_or_cbc(byteslike=None):
     msg = enc.update(data) + enc.finalize()
 
     return msg, (mode, key, data)
-

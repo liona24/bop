@@ -1,6 +1,6 @@
 from itertools import chain
 
-from bop.attacks.xor import brute_xor_multi
+from bop.attacks.sym.xor import brute_xor_multi
 from bop.data.importer import Res
 
 
