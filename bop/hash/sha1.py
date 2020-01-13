@@ -131,7 +131,7 @@ class Sha1Hash(object):
             h3=0x10325476,
             h4=0xC3D2E1F0):
 
-        self._h = (
+        self.h = (
             h0,
             h1,
             h2,
@@ -139,8 +139,8 @@ class Sha1Hash(object):
             h4
         )
 
-        self._leftover = b''
-        self._message_length = 0
+        self.leftover = b''
+        self.message_length = 0
 
     def update(self, byteslike):
         """Update the internal state with the given bytes-like object
@@ -148,17 +148,17 @@ class Sha1Hash(object):
         Arguments:
             byteslike {bytes} -- The data to feed into the hash
         """
-        input = self._leftover + bytes(byteslike)
+        input = self.leftover + bytes(byteslike)
 
         chunk = input[:64]
         i = 0
         while len(chunk) == 64:
-            self._h = process_chunk(chunk, self._h)
-            self._message_length += 64
+            self.h = process_chunk(chunk, self.h)
+            self.message_length += 64
             i += 1
             chunk = input[i*64:(i+1)*64]
 
-        self._leftover = chunk
+        self.leftover = chunk
 
     def digest(self):
         """Compute the digest of the data fed so far.
@@ -169,17 +169,19 @@ class Sha1Hash(object):
         Returns:
             bytes -- Digest of size 20 bytes.
         """
-        final = self._leftover + sha1_padding(self._message_length + len(self._leftover))
+        final = self.leftover + sha1_padding(self.message_length + len(self.leftover))
+        assert (len(final) % 64 == 0)
 
-        h = self._h
+        h = self.h
+
         for c in chunks(final, 64):
             h = process_chunk(bytes(c), h)
 
         return b''.join([ struct.pack('>I', hi) for hi in h ])
 
 
-def sha1():
-    r"""Initialize a new SHA1 hash object.
+def sha1(data=None):
+    r"""Initialize a new SHA1 hash object or quickly generate a SHA1 hash
 
     Example:
     ```python
@@ -189,8 +191,19 @@ def sha1():
     b'.\xf7\xbd\xe6\x08\xceT\x04\xe9}_\x04/\x95\xf8\x9f\x1c#(q'
 
     ```
+    Or quickly generate a SHA1 hash if the hash object is not needed:
+    ```python
+    >>> sha1(b'Hello World!')
+    b'.\xf7\xbd\xe6\x08\xceT\x04\xe9}_\x04/\x95\xf8\x9f\x1c#(q'
+
+    ```
 
     Returns:
-        Sha1Hash -- A new SHA1 hasher
+        Sha1Hash or bytes-- A new SHA1 hash object or a SHA1 digest if data was provided
     """
-    return Sha1Hash()
+    h = Sha1Hash()
+    if data is None:
+        return h
+
+    h.update(data)
+    return h.digest()
