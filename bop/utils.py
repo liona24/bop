@@ -2,7 +2,7 @@ import math
 import string
 from collections import defaultdict, deque, Counter
 from itertools import zip_longest, islice, cycle
-from cryptography.hazmat.primitives.padding import PKCS7
+import cryptography.hazmat.primitives.padding as padding
 
 PRINTABLE = set(map(ord, string.printable))
 
@@ -128,12 +128,17 @@ def pad(*parts, blocksize=16, mode='pkcs7'):
 
     Keyword Arguments:
         blocksize {int} -- The desired blocksize in bytes (default: {16})
-        mode {str} -- The padding scheme to use (default: {'pkcs7'})
+        mode {str} -- The padding scheme to use. Case insensitive. The available schemes are the ones supported be the cryptography module (https://cryptography.io/en/latest/hazmat/primitives/padding/#cryptography.hazmat.primitives.padding) (default: {'pkcs7'})
 
     Returns:
         bytes -- The padded data block
     """
-    padder = PKCS7(blocksize * 8).padder()
+
+    padding_scheme = getattr(padding, mode.upper(), None)
+    if padding_scheme is None:
+        raise ValueError(f"The given padding scheme '{mode}' is not supported!")
+
+    padder = padding_scheme(blocksize * 8).padder()
     data = b''
     for p in parts:
         if len(p) > 0:
