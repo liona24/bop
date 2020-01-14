@@ -3,6 +3,12 @@ import string
 from collections import defaultdict, deque, Counter
 from itertools import zip_longest, islice, cycle
 import cryptography.hazmat.primitives.padding as padding
+import time
+
+try:
+    now = time.time_ns
+except AttributeError:
+    now = time.time
 
 PRINTABLE = set(map(ord, string.printable))
 
@@ -364,3 +370,48 @@ def non_printable_chars(buffer):
         set -- Non-printable characters of buffer
     """
     return set(buffer) - PRINTABLE
+
+
+def time_it(x, *args, **kvargs):
+    """Time the call to callable `x`
+
+    All `args` and `kvargs` are passed to the function call, i.e. `x(*args, **kvargs)`
+
+    Arguments:
+        x {callable} -- The function to measure execution time of
+
+    Returns:
+        (float, Any) -- The measured execution time and the results returned by the callable
+    """
+    start = now()
+    rv = x(*args, **kvargs)
+    stop = now()
+
+    return stop - start, rv
+
+
+def argmax(iterable):
+    """Return the index of the maximum element of the given iterable
+
+    Example:
+    ```python
+    >>> argmax([1, 2, 3, 4, 4, 5])
+    3
+
+    ```
+
+    Arguments:
+        iterable {iterable} -- The iterable to consume
+
+    Returns:
+        int -- The index of the maximum element
+    """
+    it = iter(iterable)
+    mx = next(it)
+    i = 0
+    for j, v in enumerate(it, 1):
+        if v > mx:
+            mx = v
+            i = j
+
+    return i
