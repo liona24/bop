@@ -2,14 +2,14 @@ import secrets
 
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
-from bop.oracles._base import _Oracle
+from bop.oracles._base import _EncryptionOracle
 from bop.utils import is_padding_valid
 
 
 __all__ = [ 'PaddingCBCOracle', 'PaddingECBOracle' ]
 
 
-class _PaddingOracle(_Oracle):
+class _PaddingOracle(_EncryptionOracle):
     def __init__(self, alg, mode, plaintext=None, key=None, keysize=128):
         super().__init__(alg, mode, key=key, keysize=keysize)
 

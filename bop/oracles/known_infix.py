@@ -2,13 +2,13 @@ import secrets
 
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
-from bop.oracles._base import _Oracle
+from bop.oracles._base import _EncryptionOracle
 
 
 __all__ = [ 'KnownInfixECBOracle', 'KnownInfixCBCOracle' ]
 
 
-class _KnownInfixOracle(_Oracle):
+class _KnownInfixOracle(_EncryptionOracle):
     """An oracle which yields an encrypted message after supplying a custom known infix.
     """
     def __init__(self, alg, mode, head=None, tail=None, key=None, keysize=128):

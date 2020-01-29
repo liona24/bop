@@ -6,7 +6,7 @@ from cryptography.hazmat.backends import default_backend
 from bop.utils import pad
 
 
-class _Oracle(object):
+class _EncryptionOracle(object):
     def __init__(self, alg, mode, key=None, keysize=128):
         if key is None:
             key = secrets.token_bytes(keysize // 8)

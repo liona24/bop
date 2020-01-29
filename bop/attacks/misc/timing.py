@@ -16,7 +16,7 @@ def guess_sequence_insecure_compare(sequence_length, insecure_comparer, n=1):
     ...             return False
     ...         time.sleep(0.002)
     ...     return True
-    >>> guess_sequence_insecure_compare(6, cmp, n=5)
+    >>> guess_sequence_insecure_compare(6, cmp, n=5)  # doctest: +SKIP
     b'SECRET'
 
     ```
