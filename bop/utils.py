@@ -395,7 +395,7 @@ def argmax(iterable):
 
     Example:
     ```python
-    >>> argmax([1, 2, 3, 4, 4, 5])
+    >>> argmax([1, 2, 3, 4, 4, 4])
     3
 
     ```
