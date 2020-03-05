@@ -1,7 +1,7 @@
 from bop.utils import chunks, infix_block_diffs
 
 
-def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksize=3*512):
+def guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksize=3*512):
     """Guesses the blocklayout given an ECB - Infix - Oracle
 
     A blocklayout consists of 3 parameters:
@@ -22,7 +22,7 @@ def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksiz
     ```python
     >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
     >>> o = Oracle(head=b'Some prefix, 26 bytes long', tail=b'Very secret, very transparent text.')
-    >>> ecb_guess_block_layout(o)
+    >>> guess_block_layout(o)
     (16, 2, 10)
 
     ```
@@ -30,7 +30,7 @@ def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksiz
     ```python
     >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
     >>> o = Oracle(tail=b'Very secret, very transparent text.')
-    >>> ecb_guess_block_layout(o)
+    >>> guess_block_layout(o)
     (16, 0, 0)
 
     ```
@@ -122,7 +122,7 @@ def ecb_guess_block_layout(oracle, default_prefix=None, pb=b'\x01', max_blocksiz
     return blocksize, block_offset, padding_offset
 
 
-def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
+def decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
     r"""Performs a ECB - Known - Prefix Attack using the given oracle.
 
     The oracle is required to encrypt given input with the same secret key.
@@ -133,7 +133,7 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
     ```python
     >>> from bop.oracles.known_infix import KnownInfixECBOracle as Oracle
     >>> o = Oracle(head=b'Some prefix, 26 bytes long', tail=b'Very secret, very transparent text.')
-    >>> decrypted, blocklayout = ecb_decrypt_tail(o)
+    >>> decrypted, blocklayout = decrypt_tail(o)
     >>> decrypted
     b'Very secret, very transparent text.\x01'
 
@@ -163,7 +163,7 @@ def ecb_decrypt_tail(oracle, default_prefix=None, pb=b'\x01', blocklayout=None):
         blocksize, block_offset, padding_offset = blocklayout
     else:
         # TODO: If we really want correct offset guessing we simply would have to do the guessing routine twice with different padding bytes
-        blocksize, block_offset, padding_offset = ecb_guess_block_layout(
+        blocksize, block_offset, padding_offset = guess_block_layout(
             oracle,
             default_prefix=default_prefix,
             pb=pb

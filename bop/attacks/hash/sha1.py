@@ -2,7 +2,7 @@ import struct
 from bop.hash import Sha1Hash, sha1_padding
 
 
-def sha1_length_extension(original_message_length, original_message_hash, payload):
+def length_extension(original_message_length, original_message_hash, payload):
     r"""Performs a length extension attack on a signature (MAC) created using SHA1
 
     This attack allows (nearly) arbitrary data to be appended to a signed
@@ -16,7 +16,7 @@ def sha1_length_extension(original_message_length, original_message_hash, payloa
     >>> msg = b'Hello. This is trusted data.'
     >>> signature = mac(key, msg, alg=sha1)
     >>> # Note that the secret key is not required to forge the signature
-    >>> forged_signature, extension = sha1_length_extension(len(msg) + 12, signature, b'Quite easy, right?')
+    >>> forged_signature, extension = length_extension(len(msg) + 12, signature, b'Quite easy, right?')
     >>> msg + extension
     b'Hello. This is trusted data.\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01@Quite easy, right?'
     >>> assert (forged_signature == mac(key, msg + extension, alg=sha1))

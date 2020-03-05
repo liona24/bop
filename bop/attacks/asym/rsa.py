@@ -1,16 +1,9 @@
 from bop.utils import invmod, cubic_root
 
-__all__ = ["rsa_e3_broadcast"]
+__all__ = ["broadcast_e3"]
 
 
-def _prod(iterable):
-    x = 1
-    for i in iterable:
-        x *= i
-    return x
-
-
-def rsa_e3_broadcast(messages, public_keys):
+def broadcast_e3(messages, public_keys):
     """Perform a RSA broadcast attack for `e=3`
 
     For this to work the same plain text message has to be encrypted at least
@@ -29,7 +22,7 @@ def rsa_e3_broadcast(messages, public_keys):
     >>> msg0 = pow(plain, e, n0)
     >>> msg1 = pow(plain, e, n1)
     >>> msg2 = pow(plain, e, n2)
-    >>> rsa_e3_broadcast([msg0, msg1, msg2], [n0, n1, n2])
+    >>> broadcast_e3([msg0, msg1, msg2], [n0, n1, n2])
     1818
 
     ```

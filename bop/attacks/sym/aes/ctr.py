@@ -1,10 +1,48 @@
 from itertools import chain
 
+from bop.utils import xor
 from bop.attacks.sym.xor import brute_xor_multi
 from bop.data.importer import Res
 
 
-def ctr_fixed_nonce(iterable_of_ciphertexts, freq=Res.EN_freq_1):
+def inject_malformed(ciphertext, offset, is_, should):
+    """Inject a custom payload after encrypting a known plaintext with AES CTR
+
+    This is usefull if one wants to bypass some input validation.
+
+    Example:
+    ```python
+    >>> from bop.crypto_constructor import aes_ctr
+    >>> import secrets
+    >>> c = aes_ctr()
+    >>> plaintext = secrets.token_bytes(7) + b'HEY' + secrets.token_bytes(3)
+    >>> ciphertext = c.encrypt(plaintext)
+    >>> new_ciphertext = inject_malformed(ciphertext, 7, b'HEY', b'BYE')
+    >>> c.decrypt(new_ciphertext)[7:10]
+    b'BYE'
+
+    ```
+
+    Arguments:
+        ciphertext {byteslike} -- The ciphertext to inject the payload into
+        offset {int} -- The offset into the ciphertext at which the `is_` block starts.
+        is_ {byteslike} -- The known plaintext, which is to be altered.
+        should {byteslike} -- The desired plaintext
+
+    Raises:
+        ValueError: If the lengths of `is_` and `should` do not match
+
+    Returns:
+        byteslike -- The new ciphertext
+    """
+    if len(is_) != len(should):
+        raise ValueError(f"Length of `is_` should be equal to length of `should`: {len(is_)} != {len(should)}")
+
+    target_area = ciphertext[offset:offset + len(is_)]
+    return ciphertext[:offset] + xor(xor(target_area, is_), should) + ciphertext[offset + len(is_):]
+
+
+def fixed_nonce(iterable_of_ciphertexts, freq=Res.EN_freq_1):
     """Breaks CTR - Streamcipher (incorrectly) used with a fixed nonce using frequency analysis
 
     Example:
@@ -16,7 +54,7 @@ def ctr_fixed_nonce(iterable_of_ciphertexts, freq=Res.EN_freq_1):
     >>> plaintexts.extend(map(lambda x: x.encode('utf-8'), load(Res.EN_example_1)))
     >>> c = aes_ctr(key=b'YELLOW SUBMARINE', nonce=b'NotSoOnce Nonce!')
     >>> ciphertexts = [ c.encrypt(p) for p in plaintexts ]
-    >>> _score, guessed_key = ctr_fixed_nonce(ciphertexts)[0]
+    >>> _score, guessed_key = fixed_nonce(ciphertexts)[0]
     >>> xor(ciphertexts[0], guessed_key)
     b'Hello friendly reader'
 
