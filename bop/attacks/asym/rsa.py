@@ -50,3 +50,41 @@ def broadcast_e3(messages, public_keys):
         N *= n
 
     return cubic_root(x)
+
+
+def recover_unpadded(oracle, ciphertext, e, n, s=2):
+    """Recover the plaintext given an oracle which decrypts recently unique messages.
+
+    This is useful if to bypass the "recently unique" property of the oracle.
+
+    Example:
+    ```python3
+    >>> from bop.oracles.message_recovery import MessageRecoveryOracle as Oracle
+    >>> oracle = Oracle()
+    >>> cipher = oracle.encrypt(1337)
+    >>> oracle(cipher)
+    1337
+    >>> # We cannot recover the plaintext again:
+    >>> assert(oracle(cipher) is None)
+    >>> # Or can we?
+    >>> recover_unpadded(oracle, cipher, oracle.e, oracle.n)
+    1337
+
+    ```
+
+    Arguments:
+        oracle {callable} -- The oracle to use. It should decrypt some ciphertext with some fixed key.
+            You are only allowed to decrypt a message once.
+        ciphertext {int} -- [description]
+        e {int} -- The RSA public key parameter e
+        n {int} -- The RSA public key parameter n
+
+    Keyword Arguments:
+        s {int} -- A *random* parameter to use for key recovery in the range [2, n] (default: {2})
+
+    Returns:
+        int -- The recovered plaintext
+    """
+    new_ciphertext = (pow(s, e, n) * ciphertext) % n
+    tmp = oracle(new_ciphertext)
+    return (invmod(s, n) * tmp) % n
