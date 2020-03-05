@@ -415,3 +415,75 @@ def argmax(iterable):
             i = j
 
     return i
+
+
+def invmod(u, v):
+    """Calculate the multiplicative inverse of `u mod v`
+
+    This function is taken from [here](https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py).
+
+    Example:
+    ```python
+    >>> invmod(3, 7)
+    5
+    >>> invmod(19129, 128121291)
+    1024756
+
+    ```
+
+    Arguments:
+        u {int} -- u
+        v {int} -- v
+
+    Returns:
+        int -- Multiplicative inverse `x` such that `(1 == u*x) mod v`
+    """
+    u3, v3 = u, v
+    u1, v1 = 1, 0
+    while v3 > 0:
+        q = divmod(u3, v3)[0]
+        u1, v1 = v1, u1 - v1 * q
+        u3, v3 = v3, u3 - v3 * q
+    while u1 < 0:
+        u1 = u1 + v
+    return u1
+
+
+def cubic_root(x):
+    """Calculates the cubic integer root of `x`
+
+    Examples:
+    ```python
+    >>> cubic_root(1818*1818*1818)
+    1818
+    >>> cubic_root(3*3*5*5*7*7) is None
+    True
+
+    ```
+
+    Arguments:
+        x {int} -- x
+
+    Returns:
+        int -- The cubic root of `x`
+    """
+    low, high = 0, x
+    last_results = [0, 0]
+    parity = 0
+
+    while True:
+        root = (low + high) // 2
+        cube = root * root * root
+
+        if cube == x:
+            return root
+        if last_results[parity ^ 1] == cube:
+            return None
+
+        if cube > x:
+            high = root
+        else:
+            low = root
+
+        last_results[parity] = cube
+        parity ^= 1
