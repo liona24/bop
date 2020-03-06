@@ -4,6 +4,7 @@ from collections import defaultdict, deque, Counter
 from itertools import zip_longest, islice, cycle
 import cryptography.hazmat.primitives.padding as padding
 import time
+import binascii
 
 try:
     now = time.time_ns
@@ -461,11 +462,35 @@ def cubic_root(x):
 
     ```
 
-    Arguments:
-        x {int} -- x
-
     Returns:
         int -- The cubic root of `x`
+    """
+    rv = cubic_root2(x)
+    if len(rv) != 1:
+        return None
+    else:
+        return rv[0]
+
+
+def cubic_root2(x):
+    """Calculate the cube root of `x`. If `x` is not a perfect cube return the best candidates.
+
+    Examples:
+    ```python
+    >>> cubic_root2(1818*1818*1818)
+    [1818]
+    >>> cubic_root2(7*7*7 - 1)
+    [6, 7]
+
+    ```
+
+    This is a slight variant of `cubic_root`. Instead of returning `None` if no
+    root exists the two best candidates are returned.
+
+    The smaller candidate is always returned first.
+
+    Returns:
+        list -- The cubic root of `x` or the two closest candidates
     """
     low, high = 0, x
     last_results = [0, 0]
@@ -476,14 +501,54 @@ def cubic_root(x):
         cube = root * root * root
 
         if cube == x:
-            return root
-        if last_results[parity ^ 1] == cube:
-            return None
+            return [root]
+        if last_results[parity ^ 1] == root:
+            return sorted(last_results)
 
         if cube > x:
             high = root
         else:
             low = root
 
-        last_results[parity] = cube
+        last_results[parity] = root
         parity ^= 1
+
+
+def i2b(integer):
+    r"""Convert an integer into big-endian byte representation
+
+    ```python
+    >>> i2b(11)
+    b'\x0b'
+
+    ```
+
+    Raises:
+        ValueError: If the given number is negative
+
+    Returns:
+        bytes -- The byte representation
+    """
+    if integer < 0:
+        raise ValueError("Requires non-negative integer")
+
+    hx = hex(integer)[2:]
+    if len(hx) % 2 != 0:
+        hx = "0" + hx
+    return binascii.unhexlify(hx)
+
+
+def b2i(bytes):
+    r"""Convert a big-endian bytes object into its integer representation
+
+    Example:
+    ```python3
+    >>> b2i(b"\x0a")
+    10
+
+    ```
+
+    Returns:
+        int -- The converted integer
+    """
+    return int(binascii.hexlify(bytes), 16)

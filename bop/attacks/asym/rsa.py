@@ -1,6 +1,7 @@
-from bop.utils import invmod, cubic_root
+from bop.utils import invmod, cubic_root, cubic_root2, i2b, b2i
+from bop.hash import sha1
 
-__all__ = ["broadcast_e3"]
+__all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature"]
 
 
 def broadcast_e3(messages, public_keys):
@@ -67,7 +68,7 @@ def recover_unpadded(oracle, ciphertext, e, n, s=2):
     >>> # We cannot recover the plaintext again:
     >>> assert(oracle(cipher) is None)
     >>> # Or can we?
-    >>> recover_unpadded(oracle, cipher, oracle.e, oracle.n)
+    >>> recover_unpadded(oracle, cipher, oracle.rsa.e, oracle.rsa.n)
     1337
 
     ```
@@ -88,3 +89,68 @@ def recover_unpadded(oracle, ciphertext, e, n, s=2):
     new_ciphertext = (pow(s, e, n) * ciphertext) % n
     tmp = oracle(new_ciphertext)
     return (invmod(s, n) * tmp) % n
+
+
+def bleichenbacher_forge_signature(message, key_size, hash=sha1, protocol=b"DUMMY"):
+    r"""Forge a signature RSA (e=3) signature for the given message.
+
+    This method can be used to forge signatures if the checking is incorrectly implemented.
+
+    For this example a dummy PKCS1.5 padding is applied (see argument `protocol`).
+    This padding right-aligns the content (i.e. the hash of the message and some
+    protocol information). However an incorrect implementation may not check if
+    the signature is actually right-aligned.
+
+    You may need a minimum key size for this to work. 1024 bits should be sufficient.
+
+    Example:
+    ```python3
+    >>> import re
+    >>> from bop.hash import sha1
+    >>> from bop.crypto_constructor import rsa
+    >>> def check(message, sig, rsa):
+    ...     c = rsa.encrypt(sig)
+    ...     # note that we are ignoring trailing bytes
+    ...     # also note that the leading zero byte gets trimmed
+    ...     h = re.match(br"^\x01(\xff)*?\x00DUMMY(.{20})", c, re.DOTALL).group(2)
+    ...     return h == sha1(message)
+    ...
+    >>> some_rsa = rsa(e=3)
+    >>> my_msg = b"My very valid message"
+    >>> my_sig = bleichenbacher_forge_signature(my_msg, some_rsa.key_size)
+    >>> check(my_msg, my_sig, some_rsa)
+    True
+
+    ```
+
+    Arguments:
+        message {bytes} -- The message to sign
+        key_size {int} -- The size of the public key parameter N in bits
+
+    Keyword Arguments:
+        hash {callable} -- The hash algorithm to use (default: {sha1})
+        protocol {bytes} -- The bytes to use which specify meta data. In reality this would be some kind of ASN.1 scheme but for this toy example it does not really matter. (default: {b"DUMMY"})
+
+    Returns:
+        int -- The signature of the message
+    """
+    # we fake this. In reality a little bit of effort has to be made in order to specify the
+    # hash algorithm used, size of the hash etc.
+    h = hash(message)
+    payload = b"\x00" + protocol + h
+    payload_len = len(payload) * 8
+
+    # this is more or less a heuristic, place digest at about 2/3
+    position = key_size // 8 // 3 * 16
+
+    n = (1 << payload_len) - b2i(payload)
+    c = (1 << (key_size - 15)) - n * (1 << position)
+
+    root = cubic_root2(c)
+    if len(root) == 1:
+        # we are lucky
+        root = root[0]
+    else:
+        root = root[-1]
+
+    return i2b(root)
