@@ -132,7 +132,7 @@ def bleichenbacher_forge_signature(message, key_size, hash=sha1, protocol=b"DUMM
         protocol {bytes} -- The bytes to use which specify meta data. In reality this would be some kind of ASN.1 scheme but for this toy example it does not really matter. (default: {b"DUMMY"})
 
     Returns:
-        int -- The signature of the message
+        bytes -- The signature of the message
     """
     # we fake this. In reality a little bit of effort has to be made in order to specify the
     # hash algorithm used, size of the hash etc.
