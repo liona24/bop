@@ -9,10 +9,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
 import secrets
+import binascii
 
 from bop.utils import invmod, b2i, i2b
+from bop.hash import sha1
 
-__all__ = ['aes_cbc', 'aes_ctr', 'rsa']
+__all__ = ['aes_cbc', 'aes_ctr', 'rsa', 'dsa']
 
 
 class SimpleRSAInterface(object):
@@ -55,6 +57,94 @@ class SimpleRSAInterface(object):
 
     def __repr__(self):
         return f"<SimpleRSA>"
+
+
+class SimpleDSAInterface(object):
+    """Provides a simple interface to DSA signing.
+
+    Arguments:
+        p {int} -- Parameter p
+        q {int} -- Parameter q
+        g {int} -- Parameter g
+        x {int} -- Private key x
+    """
+
+    class Signature(object):
+        def __init__(self, r, s, k):
+            self.r = r
+            self.s = s
+            self._k = k
+
+        def __iter__(self):
+            return iter([self.r, self.s])
+
+        def __str__(self):
+            return binascii.hexlify(i2b(self.r)) + "." + binascii.hexlify(i2b(self.s))
+
+        def __eq__(self, other):
+            if type(other) != SimpleDSAInterface.Signature:
+                return False
+            return self.r == other.r and self.s == other.s
+
+    def __init__(self, p, q, g, x, y, hash):
+        self.p = p
+        self.q = q
+        self.g = g
+        self.x = x
+        self.y = y
+        self.hash = hash
+
+        # this is a hook which can be used to "weaken" this implementation
+        self.generate_nonce = None
+
+    @property
+    def public_parameters(self):
+        return (self.p, self.q, self.g, self.y)
+
+    @property
+    def private_key(self):
+        return (self.x,)
+
+    def sign(self, msg):
+        if type(msg) != bytes:
+            msg = i2b(msg)
+
+        h = b2i(self.hash(msg))
+        s = 0
+        while s == 0:
+            r = 0
+            while r == 0:
+                if self.generate_nonce is not None:
+                    k = self.generate_nonce()
+                else:
+                    k = secrets.randbelow(self.q - 2) + 2
+
+                r = pow(self.g, k, self.p) % self.q
+            s = (invmod(k, self.q) * (h + r * self.x)) % self.q
+
+        return self.Signature(r, s, k)
+
+    def verify(self, msg, sig):
+        r, s = sig
+        if r <= 0 or r >= self.q or s <= 0 or s >= self.q:
+            return False
+
+        if type(msg) != bytes:
+            msg = i2b(msg)
+
+        h = b2i(self.hash(msg))
+        w = invmod(s, self.q)
+        u1 = (w * h) % self.q
+        u2 = (w * r) % self.q
+
+        v = (pow(self.g, u1, self.p) * pow(self.y, u2, self.p)) % self.q
+        return v == r
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "<SimpleDSA>"
 
 
 class SimpleSymCipherInterface(object):
@@ -116,3 +206,16 @@ def rsa(p=None, q=None, e=0x10001):
     key_size = len(bin(n)) - 2
 
     return SimpleRSAInterface(d, n, e, key_size=key_size)
+
+
+def dsa(p=None, q=None, g=None, y=None, x=None, hash=sha1):
+    if p is None or q is None or g is None:
+        p = 0x800000000000000089e1855218a0e7dac38136ffafa72eda7859f2171e25e65eac698c1702578b07dc2a1076da241c76c62d374d8389ea5aeffd3226a0530cc565f3bf6b50929139ebeac04f48c3c84afb796d61e5a4f9a8fda812ab59494232c7d2b4deb50aa18ee9e132bfa85ac4374d7f9091abc3d015efc871a584471bb1
+        q = 0xf4f47f05794b256174bba6e9b396a7707e563c5b
+        g = 0x5958c9d3898b224b12672c0b98e06c60df923cb8bc999d119458fef538b8fa4046c8db53039db620c094c9fa077ef389b5322a559946a71903f990f1f7e0e025e2d7f7cf494aff1a0470f5b64c36b625a097f1651fe775323556fe00b3608c887892878480e99041be601a62166ca6894bdd41a7054ec89f756ba9fc95302291
+
+    if x is None:
+        x = secrets.randbelow(q - 2) + 2
+    if y is None:
+        y = pow(g, x, p)
+    return SimpleDSAInterface(p, q, g, x, y, hash)

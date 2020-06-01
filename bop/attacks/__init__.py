@@ -1,1 +1,1 @@
-__all__ = ['sym', 'asym', 'hash']
+__all__ = ['sym', 'asym', 'hash', 'misc']
