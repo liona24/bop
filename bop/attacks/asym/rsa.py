@@ -1,7 +1,7 @@
 from bop.utils import invmod, cubic_root, cubic_root2, i2b, b2i
 from bop.hash import sha1
 
-__all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature"]
+__all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature", "decrypt"]
 
 
 def broadcast_e3(messages, public_keys):
@@ -154,3 +154,66 @@ def bleichenbacher_forge_signature(message, key_size, hash=sha1, protocol=b"DUMM
         root = root[-1]
 
     return i2b(root)
+
+
+def decrypt(oracle, msg, e, n):
+    """Performs a RSA-parity attack given an oracle which reports whether a decrypted plaintext is even or odd
+
+    Example:
+    ```python
+    >>> from bop.oracles.parity import RsaParityOracle as Oracle
+    >>> o = Oracle()
+    >>> msg = o.encrypt(b"Hello Bob!")
+    >>> e, n = o.public_key()
+    >>> decrypt(o, msg, e, n)
+    b'Hello Bob!'
+
+    ```
+
+    Args:
+        oracle (callable): A function which decrypts ciphers which were encrypted using the given public key and reports whether the resulting plain text is even (`True`) or odd (`False`)
+        msg (bytes or int): The encrypted message to decrypt
+        e (int): The public key exponent e
+        n (int): The public key modul n
+
+    Raises:
+        RuntimeError: If the plain text cannot be recovered. This is propably caused by rounding errors
+
+    Returns:
+        bytes or int: The decrypted message. Depending on the type given (`msg`) the resulting type matches.
+    """
+    was_bytes = False
+    if type(msg) != int:
+        was_bytes = True
+        msg = b2i(msg)
+
+    i = 2
+    upper = n
+    lower = 0
+
+    # we will use this to carry the rounding error, though this is VERY vague
+    # the desired plain text is usually off by only 1 anyways
+    rest = 1
+
+    while i <= n:
+        # encrypt i
+        f = pow(i, e, n)
+
+        if oracle(f * msg):
+            # even
+            upper = (upper + lower) // 2
+            rest += (upper + lower) & 1
+        else:
+            # odd
+            lower = (upper + lower) // 2
+
+        i <<= 1
+
+    for plain in range(lower, upper + rest):
+        if pow(plain, e, n) == msg:
+            if was_bytes:
+                return i2b(plain)
+            else:
+                return plain
+
+    raise RuntimeError("Could not find plain text. Something went wrong :(")
