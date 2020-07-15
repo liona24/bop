@@ -3,7 +3,7 @@ import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.backends import default_backend
 
-from bop.utils import pad
+from bop.utils import pad_sym
 
 
 class _EncryptionOracle(object):
@@ -18,7 +18,7 @@ class _EncryptionOracle(object):
         self.msg = None
 
     def _encrypt(self, *parts):
-        self.plain = pad(*parts)
+        self.plain = pad_sym(*parts)
 
         enc = self.cipher.encryptor()
         self.msg = enc.update(self.plain) + enc.finalize()

@@ -3,7 +3,8 @@ import secrets
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
 from bop.oracles._base import _EncryptionOracle
-from bop.utils import is_padding_valid
+from bop.crypto_constructor import rsa
+from bop.utils import is_padding_valid, i2b, pad_pkcs1v5
 
 
 __all__ = [ 'PaddingCBCOracle', 'PaddingECBOracle' ]
@@ -87,3 +88,27 @@ class PaddingECBOracle(_PaddingOracle):
     """
     def __init__(self, plaintext=None, key=None, keysize=128):
         super().__init__(algorithms.AES, modes.ECB(), plaintext=plaintext, key=key, keysize=keysize)
+
+
+class PaddingRSAOracle(object):
+
+    def __init__(self, p=None, q=None, e=0x10001):
+        print(p, q)
+        self.rsa = rsa(p, q, e)
+
+    def public_key(self):
+        return self.rsa.e, self.rsa.n
+
+    def encrypt(self, plain):
+        return self.rsa.encrypt(plain)
+
+    def __call__(self, msg):
+        plain = self.rsa.decrypt(msg)
+
+        if type(plain) == int:
+            plain = i2b(plain)
+
+        # the conversion will hide the first byte if it is zero
+        first_byte_is_zero = len(plain) == (self.rsa.key_size // 8 - 1)
+
+        return first_byte_is_zero and plain[0] == 2

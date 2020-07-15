@@ -1,7 +1,8 @@
-from bop.utils import invmod, cubic_root, cubic_root2, i2b, b2i
+from bop.utils import invmod, cubic_root, cubic_root2, i2b, b2i, bit_length_exp2
 from bop.hash import sha1
+import secrets
 
-__all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature", "decrypt"]
+__all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature", "decrypt_parity_leak", "decrypt_pkcs_padding_leak"]
 
 
 def broadcast_e3(messages, public_keys):
@@ -156,7 +157,7 @@ def bleichenbacher_forge_signature(message, key_size, hash=sha1, protocol=b"DUMM
     return i2b(root)
 
 
-def decrypt(oracle, msg, e, n):
+def decrypt_parity_leak(oracle, msg, e, n):
     """Performs a RSA-parity attack given an oracle which reports whether a decrypted plaintext is even or odd
 
     Example:
@@ -165,7 +166,7 @@ def decrypt(oracle, msg, e, n):
     >>> o = Oracle()
     >>> msg = o.encrypt(b"Hello Bob!")
     >>> e, n = o.public_key()
-    >>> decrypt(o, msg, e, n)
+    >>> decrypt_parity_leak(o, msg, e, n)
     b'Hello Bob!'
 
     ```
@@ -217,3 +218,88 @@ def decrypt(oracle, msg, e, n):
                 return plain
 
     raise RuntimeError("Could not find plain text. Something went wrong :(")
+
+
+def decrypt_pkcs_padding_leak(oracle, msg, e, n):
+
+    was_bytes = False
+    if type(msg) != int:
+        msg = b2i(msg)
+        was_bytes = True
+
+    k = bit_length_exp2(n)
+    assert k > 16
+
+    B = 1 << (k - 16)
+
+    s0 = 1
+    c0 = msg
+
+    first = True
+
+    M = {(2 * B, 3 * B - 1)}
+    if not oracle(msg):
+        # Blinding
+        # ensure we have a valid padding to work with
+        while True:
+            s0 = secrets.randbelow(n - 1) + 1
+            c0 = (msg * pow(s0, e, n)) % n
+            if oracle(c0):
+                break
+
+    while True:
+        if first:
+            # Step 2a
+            s = n // (3 * B)
+            while oracle((c0 * pow(s, e, n)) % n) is False:
+                s += 1
+            first = False
+        elif len(M) > 1:
+            # Step 2b
+            s_ = s + 1
+            while not oracle((c0 * pow(s_, e, n)) % n):
+                s_ += 1
+            s = s_
+        else:
+            # Step 2c
+            a, b = next(iter(M))
+            found = False
+            r = 2 * (b * s - 2 * B) // n
+            while not found:
+                s_ = (2 * B + r * n) // b
+
+                s_max = (3 * B + r * n) // a
+
+                while s_ <= s_max:
+                    if oracle((c0 * pow(s_, e, n)) % n):
+                        found = True
+                        break
+                    s_ += 1
+
+                r += 1
+
+            s = s_
+
+        # Step 3
+        M_ = set()
+        for a, b in M:
+            r_low = (a * s - 3 * B + 1) // n
+            r_high = (b * s - 2 * B) // n
+            for r in range(r_low, r_high + 1):
+                # note the + s - 1 in order to ensure rounding to the next integer
+                low = max(a, (2 * B + r * n + s - 1) // s)
+                high = min(b, (3 * B - 1 + r * n) // s)
+
+                if low <= high and (low, high) not in M_:
+                    M_.add((low, high))
+
+        M = M_
+
+        # Step 4
+        if len(M) == 1:
+            a, b = next(iter(M))
+            if a == b:
+                plain = (a * invmod(s0, n)) % n
+                if was_bytes:
+                    return i2b(plain)
+                return plain

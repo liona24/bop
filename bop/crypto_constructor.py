@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms, modes
 import secrets
 import binascii
 
-from bop.utils import invmod, b2i, i2b
+from bop.utils import invmod, b2i, i2b, bit_length_exp2
 from bop.hash import sha1
 
 __all__ = ['aes_cbc', 'aes_ctr', 'rsa', 'dsa']
@@ -203,8 +203,7 @@ def rsa(p=None, q=None, e=0x10001):
     pq = (p - 1) * (q - 1)
     d = invmod(e, pq)
 
-    key_size = len(bin(n)) - 2
-
+    key_size = bit_length_exp2(n)
     return SimpleRSAInterface(d, n, e, key_size=key_size)
 
 

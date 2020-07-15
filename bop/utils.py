@@ -2,9 +2,12 @@ import math
 import string
 from collections import defaultdict, deque, Counter
 from itertools import zip_longest, islice, cycle
+from cryptography.hazmat.backends import default_backend
 import cryptography.hazmat.primitives.padding as padding
+from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key as _rsa_gen_pkey
 import time
 import binascii
+import secrets
 
 try:
     now = time.time_ns
@@ -121,14 +124,45 @@ def n_grams(iterable, n):
         yield tuple(d)
 
 
-def pad(*parts, blocksize=16, mode='pkcs7'):
+def pad_pkcs1v5(plaintext, n):
+    was_bytes = True
+
+    if type(plaintext) == int:
+        plaintext = i2b(plaintext)
+        was_bytes = False
+
+    k = bit_length_exp2(n) // 8
+
+    mlen = len(plaintext)
+    if mlen > k - 11:
+        raise ValueError(f"Message too long! ({mlen} > {k - 11}")
+
+    pad_str = []
+    for _ in range(k - mlen - 3):
+        x = 0
+        while x == 0:
+            # TODO: uncomment
+            # x = secrets.randbits(8)
+            x = 1
+        pad_str.append(x)
+
+    pad_str = bytes(pad_str)
+    plaintext = b'\x00\x02' + pad_str + b'\x00' + plaintext
+
+    if not was_bytes:
+        plaintext = b2i(plaintext)
+
+    return plaintext
+
+
+def pad_sym(*parts, blocksize=16, mode='pkcs7'):
     r"""Combines the given portions of data and pads them using the given scheme.
 
     Example:
     ```python
     >>> a = b'ABC'
     >>> b = b'DEFGH'
-    >>> pad(a, b, blocksize=16, mode='pkcs7')
+    >>> pad_sym(a, b, blocksize=16, mode='pkcs7')
     b'ABCDEFGH\x08\x08\x08\x08\x08\x08\x08\x08'
 
     ```
@@ -166,6 +200,9 @@ def is_padding_valid(byteslike, mode='pkcs7'):
     Returns:
         bool -- `True` if the padding is valid, `False` if it is invalid.
     """
+    if mode != 'pkcs7':
+        raise NotImplementedError("Currently only PKCS7 is supported :(")
+
     pad_byte = byteslike[-1]
 
     if int(pad_byte) == 0 or int(pad_byte) > 16:
@@ -552,3 +589,92 @@ def b2i(bytes):
         int -- The converted integer
     """
     return int(binascii.hexlify(bytes), 16)
+
+
+def bit_length_exp2(n):
+    """Return the bit length of the given number rounded to the next power of 2
+
+    Example:
+    ```python
+    >>> bit_length_exp2(119)
+    8
+
+    ```
+
+    Args:
+        n (int): Number to calculate the bitlength of
+
+    Returns:
+        int: The size of the number in bits
+    """
+    return 1 << math.ceil(math.log2(n.bit_length()))
+
+
+def _try_get_prime(nbits):
+    """Try to guess a prime number of the given bit size.
+
+    Args:
+        nbits (int): The size of the number
+
+    Returns:
+        int: The number if it probably is prime. None if the attempt failed.
+    """
+    p = secrets.randbits(nbits)
+
+    if p == 0 or p == 1:
+        return None
+
+    if p == 2 or p == 3:
+        return p
+
+    m = p - 1
+    d = 0
+    while m % 2 == 0:
+        m //= 2
+        d += 1
+
+    for _ in range(nbits):
+        a = secrets.randbelow(p - 3) + 2
+        x = pow(a, m, p)
+        if x == 1 or x == p - 1:
+            continue
+        for _ in range(d - 1):
+            x = pow(x, 2, p)
+            if x == 1:
+                return None
+            if x == p - 1:
+                break
+        if x != p - 1:
+            return None
+
+    return p
+
+
+def gen_rsa_key_params(nbits):
+    """Generate RSA key parameters p and q.
+
+    This is adopted from `cryptography.hazmat.primitives.asymmetric.rsa.generate_private_key`
+    in order to provide the possibility to generate weak parameters.
+    If the key size is less than 512 bits an attempt is made to generate two primes
+    using the miller rabin primality test.
+
+    Args:
+        nbits (int): Number of bits to target for p and q
+
+    Returns:
+        (int, int): The key parameters p, q each having `nbits`
+    """
+
+    if nbits >= 512:
+        pkey = _rsa_gen_pkey(0x10001, nbits, default_backend())
+        return pkey.private_numbers().p, pkey.private_numbers().q
+
+    p = None
+    while p is None:
+        p = _try_get_prime(nbits)
+
+    q = None
+    while q is None or q == p:
+        q = _try_get_prime(nbits)
+
+    return p, q
