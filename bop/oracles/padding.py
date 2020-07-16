@@ -93,7 +93,6 @@ class PaddingECBOracle(_PaddingOracle):
 class PaddingRSAOracle(object):
 
     def __init__(self, p=None, q=None, e=0x10001):
-        print(p, q)
         self.rsa = rsa(p, q, e)
 
     def public_key(self):

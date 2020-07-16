@@ -125,6 +125,21 @@ def n_grams(iterable, n):
 
 
 def pad_pkcs1v5(plaintext, n):
+    """Pads the given plaintext with PKCS1v5 padding according to the given public modulus.
+
+    PKCS1v5 padding is a padding of the form `00 02 <RANDOM NON-ZERO BYTES> 00 <ORIGINAL MSG>`
+    The width is matched to be the size of the public modulus.
+
+    Args:
+        plaintext (int or bytes): The plaintext message to be padded
+        n (int): The public modulus
+
+    Raises:
+        ValueError: If the message cannot be padded under the given modulus (message too long)
+
+    Returns:
+        int or bytes: The padded message. The output type is matched to be the input type
+    """
     was_bytes = True
 
     if type(plaintext) == int:
@@ -141,9 +156,7 @@ def pad_pkcs1v5(plaintext, n):
     for _ in range(k - mlen - 3):
         x = 0
         while x == 0:
-            # TODO: uncomment
-            # x = secrets.randbits(8)
-            x = 1
+            x = secrets.randbits(8)
         pad_str.append(x)
 
     pad_str = bytes(pad_str)
@@ -659,11 +672,22 @@ def gen_rsa_key_params(nbits):
     using the miller rabin primality test.
 
     Args:
-        nbits (int): Number of bits to target for p and q
+        nbits (int): Number of bits to target for p and q. For convenience reasons this will be rounded to the next power of 2
 
     Returns:
         (int, int): The key parameters p, q each having `nbits`
     """
+
+    nbits_new = 1 << math.ceil(math.log2(nbits))
+    if nbits != nbits_new:
+        import warnings
+        warnings.warn(
+            f"The given number of bits ({nbits}) is no power of 2. It will be rounded to {nbits_new}!",
+            RuntimeWarning,
+            stacklevel=2
+        )
+
+    nbits = nbits_new
 
     if nbits >= 512:
         pkey = _rsa_gen_pkey(0x10001, nbits, default_backend())

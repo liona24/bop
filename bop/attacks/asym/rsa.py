@@ -221,6 +221,47 @@ def decrypt_parity_leak(oracle, msg, e, n):
 
 
 def decrypt_pkcs_padding_leak(oracle, msg, e, n):
+    """Perform an adaptive chosen ciphertext against a weak RSA implementation leaking PKCS1v5 padding information.
+
+    This attack was discovered by Daniel Bleichenbacher and is well described in the original [paper](http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf).
+
+    Side note:\
+    This attack is generally faster if `msg` is already properly padded.
+    Depending on the keysize the expected running time may be somewhere between a few seconds (key size <= 512 bits) or somewhere around
+    one minute for a 1024 public modulus.
+
+    I once tested using a 2048 bit key which ran about an hour..\
+    I am pretty sure this implementation is far from optimal, though I am not qualified to judge where I went wrong.
+
+
+    Example:
+    ```python3
+    >>> from bop.oracles.padding import PaddingRSAOracle as Oracle
+    >>> import bop.utils as utils
+    >>> # We will choose smaller params to keep the running time down a little bit
+    >>> p, q = utils.gen_rsa_key_params(256)
+    >>> o = Oracle(p, q)
+    >>> e, n = o.public_key()
+    >>> plain = b"Hey! This message is save!"
+    >>> # Optional: Pad the message:
+    >>> # plain = utils.pad_pkcs1v5(plain, n)
+    >>> msg = o.encrypt(plain)
+    >>> decrypt_pkcs_padding_leak(o, msg, e, n)
+    b'Hey! This message is save!'
+
+    ```
+
+
+    Args:
+        oracle (callable): An oracle which leaks whether the decrypted message has a valid PKCS1v5 padding or not
+            (i. e. the first byte is equal to 0 and the second byte is equal to 2)
+        msg (bytes or int): The message to decrypt
+        e (int): The public exponent
+        n (int): The public modulus
+
+    Returns:
+        bytes or int: The decrypted message. Depending on the input type the output type is matched.
+    """
 
     was_bytes = False
     if type(msg) != int:
