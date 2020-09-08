@@ -1,5 +1,5 @@
 import struct
-from bop.hash import Sha1Hash, sha1_padding
+from bop.hashing import Sha1Hash, sha1_padding
 
 
 def length_extension(original_message_length, original_message_hash, payload):
@@ -11,7 +11,7 @@ def length_extension(original_message_length, original_message_hash, payload):
     Example:
     ```python
     >>> import secrets
-    >>> from bop.hash import mac, sha1
+    >>> from bop.hashing import mac, sha1
     >>> key = secrets.token_bytes(12)
     >>> msg = b'Hello. This is trusted data.'
     >>> signature = mac(key, msg, alg=sha1)

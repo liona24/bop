@@ -1,4 +1,4 @@
-from bop.hash import sha1
+from bop.hashing import sha1
 from bop.utils import invmod, i2b, b2i
 
 

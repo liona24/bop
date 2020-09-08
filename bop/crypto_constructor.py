@@ -12,7 +12,7 @@ import secrets
 import binascii
 
 from bop.utils import invmod, b2i, i2b, bit_length_exp2
-from bop.hash import sha1
+from bop.hashing import sha1
 
 __all__ = ['aes_cbc', 'aes_ctr', 'rsa', 'dsa']
 

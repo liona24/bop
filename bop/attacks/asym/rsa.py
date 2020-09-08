@@ -1,5 +1,5 @@
 from bop.utils import invmod, cubic_root, cubic_root2, i2b, b2i, bit_length_exp2
-from bop.hash import sha1
+from bop.hashing import sha1
 import secrets
 
 __all__ = ["broadcast_e3", "recover_unpadded", "bleichenbacher_forge_signature", "decrypt_parity_leak", "decrypt_pkcs_padding_leak"]
@@ -107,7 +107,7 @@ def bleichenbacher_forge_signature(message, key_size, hash=sha1, protocol=b"DUMM
     Example:
     ```python3
     >>> import re
-    >>> from bop.hash import sha1
+    >>> from bop.hashing import sha1
     >>> from bop.crypto_constructor import rsa
     >>> def check(message, sig, rsa):
     ...     c = rsa.encrypt(sig)
